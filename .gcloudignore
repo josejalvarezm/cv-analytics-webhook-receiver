@@ -11,3 +11,5 @@ node_modules
 .env
 .env.local
 README.md
+main.go
+internal/
