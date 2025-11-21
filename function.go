@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	firebase "firebase.google.com/go/v4"
@@ -229,6 +230,9 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Missing X-Webhook-Signature header", http.StatusBadRequest)
 		return
 	}
+
+	// Remove "sha256=" prefix if present (Lambda sends "sha256=<hex>")
+	signature = strings.TrimPrefix(signature, "sha256=")
 
 	if err := h.processor.Process(r.Context(), body, signature); err != nil {
 		h.logger.Error("failed to process webhook", err)
