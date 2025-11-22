@@ -13,10 +13,12 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"cloud.google.com/go/firestore"
+	"golang.org/x/time/rate"
 )
 
 var webhookHandler http.Handler
@@ -201,16 +203,43 @@ func (r *FirestoreRepository) Write(ctx context.Context, record AnalyticsRecord)
 
 // ===== HANDLER LAYER =====
 
-type WebhookHandler struct {
-	processor *WebhookService
-	logger    Logger
+// RateLimiter provides thread-safe rate limiting
+type RateLimiter struct {
+	limiter *rate.Limiter
+	mu      sync.Mutex
 }
 
-func NewWebhookHandler(processor *WebhookService, logger Logger) *WebhookHandler {
-	return &WebhookHandler{processor, logger}
+func NewRateLimiter(requestsPerSecond int, burst int) *RateLimiter {
+	return &RateLimiter{
+		limiter: rate.NewLimiter(rate.Limit(requestsPerSecond), burst),
+	}
+}
+
+func (rl *RateLimiter) Allow() bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return rl.limiter.Allow()
+}
+
+type WebhookHandler struct {
+	processor   *WebhookService
+	logger      Logger
+	rateLimiter *RateLimiter
+}
+
+func NewWebhookHandler(processor *WebhookService, logger Logger, rateLimiter *RateLimiter) *WebhookHandler {
+	return &WebhookHandler{processor, logger, rateLimiter}
 }
 
 func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Check rate limit first (before any processing)
+	if !h.rateLimiter.Allow() {
+		h.logger.Info("rate limit exceeded", r.RemoteAddr)
+		w.Header().Set("X-RateLimit-Retry-After", "1")
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -282,9 +311,14 @@ func initializeHandler(cfg *Config) http.Handler {
 	validator := NewHMACValidator(cfg.WebhookSecret)
 	writer := NewFirestoreRepository(firestoreClient)
 	webhookService := NewWebhookService(validator, writer, logger)
-	handler := NewWebhookHandler(webhookService, logger)
+	
+	// Rate limiter: 100 requests per second with burst of 20
+	// Protects against DDoS while allowing legitimate traffic spikes
+	rateLimiter := NewRateLimiter(100, 20)
+	
+	handler := NewWebhookHandler(webhookService, logger, rateLimiter)
 
-	logger.Info("webhook handler initialized", "environment", cfg.Environment, "database", "firestore")
+	logger.Info("webhook handler initialized", "environment", cfg.Environment, "database", "firestore", "rate_limit", "100 req/s")
 
 	return handler
 }

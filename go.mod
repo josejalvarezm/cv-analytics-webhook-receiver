@@ -5,6 +5,7 @@ go 1.23
 require (
 	cloud.google.com/go/firestore v1.14.0
 	firebase.google.com/go/v4 v4.14.0
+	golang.org/x/time v0.5.0
 )
 
 require (
