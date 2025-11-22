@@ -1,0 +1,148 @@
+name: Webhook Receiver CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'function.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.gcloudignore'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'function.go'
+      - 'go.mod'
+      - 'go.sum'
+
+env:
+  GCP_REGION: us-central1
+  FUNCTION_NAME: cv-analytics-webhook-receiver
+  GO_VERSION: '1.21'
+  RUNTIME: go121
+
+jobs:
+  test:
+    name: Test & Validate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      
+      - name: Download dependencies
+        run: go mod download
+      
+      - name: Verify dependencies
+        run: go mod verify
+      
+      - name: Run go fmt
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Code not formatted. Please run: go fmt ./..."
+            gofmt -s -l .
+            exit 1
+          fi
+      
+      - name: Run go vet
+        run: go vet ./...
+      
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+        continue-on-error: true
+      
+      - name: Check for vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+        continue-on-error: true
+      
+      - name: Build function
+        run: go build -v -o /tmp/function .
+
+  deploy:
+    name: Deploy to GCP
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      
+      - name: Deploy Cloud Function
+        run: |
+          gcloud functions deploy ${{ env.FUNCTION_NAME }} \
+            --gen2 \
+            --runtime=${{ env.RUNTIME }} \
+            --region=${{ env.GCP_REGION }} \
+            --source=. \
+            --entry-point=AnalyticsWebhook \
+            --trigger-http \
+            --allow-unauthenticated \
+            --memory=128Mi \
+            --timeout=60s \
+            --max-instances=10 \
+            --min-instances=0 \
+            --set-env-vars=ENVIRONMENT=production \
+            --set-secrets=WEBHOOK_SECRET=webhook-secret:latest \
+            --service-account=${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+      
+      - name: Get function URL
+        id: function-url
+        run: |
+          FUNCTION_URL=$(gcloud functions describe ${{ env.FUNCTION_NAME }} \
+            --gen2 \
+            --region=${{ env.GCP_REGION }} \
+            --format='value(serviceConfig.uri)')
+          echo "url=$FUNCTION_URL" >> $GITHUB_OUTPUT
+          echo "Function URL: $FUNCTION_URL"
+      
+      - name: Verify deployment
+        run: |
+          gcloud functions describe ${{ env.FUNCTION_NAME }} \
+            --gen2 \
+            --region=${{ env.GCP_REGION }} \
+            --format='table(name,state,updateTime)'
+      
+      - name: Run smoke test
+        run: |
+          FUNCTION_URL="${{ steps.function-url.outputs.url }}"
+          # Test with invalid method (should return 405)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$FUNCTION_URL")
+          if [ "$HTTP_CODE" = "405" ]; then
+            echo "✅ Smoke test passed: Function responding correctly to GET (405)"
+          else
+            echo "❌ Smoke test failed: Expected 405, got $HTTP_CODE"
+            exit 1
+          fi
+      
+      - name: Update Lambda webhook URL
+        run: |
+          echo "🔗 Update AWS Lambda environment variable:"
+          echo "WEBHOOK_URL=${{ steps.function-url.outputs.url }}"
+          echo ""
+          echo "Run this command in AWS CLI:"
+          echo "aws lambda update-function-configuration \\"
+          echo "  --function-name cv-analytics-processor-production \\"
+          echo "  --environment Variables={WEBHOOK_URL=${{ steps.function-url.outputs.url }},WEBHOOK_SECRET=\$WEBHOOK_SECRET} \\"
+          echo "  --region us-east-1"
