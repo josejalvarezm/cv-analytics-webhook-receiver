@@ -1,5 +1,5 @@
-// Package webhook contains the Cloud Function entry point
-package webhook
+// Package function contains the Cloud Function entry point for GCP Cloud Functions Gen2
+package function
 
 import (
 	"context"

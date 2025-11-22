@@ -1,6 +1,6 @@
 module example.com/webhook-receiver
 
-go 1.23
+go 1.22
 
 require (
 	cloud.google.com/go/firestore v1.14.0
