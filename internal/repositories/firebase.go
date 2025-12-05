@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"example.com/webhook-receiver/internal/domain"
 	"firebase.google.com/go/v4/db"
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/domain"
 )
 
 // FirebaseRepository implements domain.AnalyticsWriter using Firebase Realtime Database

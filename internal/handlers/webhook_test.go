@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/domain"
+	"example.com/webhook-receiver/internal/domain"
 )
 
 // MockWebhookProcessor for testing

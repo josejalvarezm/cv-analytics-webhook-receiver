@@ -8,11 +8,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/config"
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/domain"
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/handlers"
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/repositories"
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/services"
+	"example.com/webhook-receiver/internal/config"
+	"example.com/webhook-receiver/internal/domain"
+	"example.com/webhook-receiver/internal/handlers"
+	"example.com/webhook-receiver/internal/repositories"
+	"example.com/webhook-receiver/internal/services"
 
 	"context"
 

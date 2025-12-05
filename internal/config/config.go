@@ -7,19 +7,21 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	WebhookSecret     string
-	FirebaseProjectID string
-	Port              string
-	Environment       string
+	WebhookSecret       string
+	FirebaseProjectID   string
+	FirebaseDatabaseURL string
+	Port                string
+	Environment         string
 }
 
 // LoadConfig loads configuration from environment variables
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		WebhookSecret:     os.Getenv("WEBHOOK_SECRET"),
-		FirebaseProjectID: os.Getenv("FIREBASE_PROJECT_ID"),
-		Port:              getEnvOrDefault("PORT", "8080"),
-		Environment:       getEnvOrDefault("ENVIRONMENT", "development"),
+		WebhookSecret:       os.Getenv("WEBHOOK_SECRET"),
+		FirebaseProjectID:   os.Getenv("FIREBASE_PROJECT_ID"),
+		FirebaseDatabaseURL: os.Getenv("FIREBASE_DATABASE_URL"),
+		Port:                getEnvOrDefault("PORT", "8080"),
+		Environment:         getEnvOrDefault("ENVIRONMENT", "development"),
 	}
 
 	// Validate required fields

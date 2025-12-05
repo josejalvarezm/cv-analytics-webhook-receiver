@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/domain"
+	"example.com/webhook-receiver/internal/domain"
 )
 
 // FirestoreRepository implements domain.AnalyticsWriter using Firestore

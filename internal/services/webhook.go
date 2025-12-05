@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/domain"
+	"example.com/webhook-receiver/internal/domain"
 )
 
 // WebhookService implements domain.WebhookProcessor

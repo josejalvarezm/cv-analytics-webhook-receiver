@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/josejalvarezm/cv-analytics-webhook-receiver/internal/domain"
+	"example.com/webhook-receiver/internal/domain"
 )
 
 // WebhookHandler handles incoming webhook requests (HTTP transport layer)
