@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	firebase "firebase.google.com/go/v4"
 	"cloud.google.com/go/firestore"
+	firebase "firebase.google.com/go/v4"
 	"golang.org/x/time/rate"
 )
 
@@ -311,11 +311,11 @@ func initializeHandler(cfg *Config) http.Handler {
 	validator := NewHMACValidator(cfg.WebhookSecret)
 	writer := NewFirestoreRepository(firestoreClient)
 	webhookService := NewWebhookService(validator, writer, logger)
-	
+
 	// Rate limiter: 100 requests per second with burst of 20
 	// Protects against DDoS while allowing legitimate traffic spikes
 	rateLimiter := NewRateLimiter(100, 20)
-	
+
 	handler := NewWebhookHandler(webhookService, logger, rateLimiter)
 
 	logger.Info("webhook handler initialized", "environment", cfg.Environment, "database", "firestore", "rate_limit", "100 req/s")

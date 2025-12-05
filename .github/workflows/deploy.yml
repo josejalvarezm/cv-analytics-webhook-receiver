@@ -1,11 +1,12 @@
 name: Webhook Receiver CI/CD
 
 on:
+  workflow_dispatch:  # Allow manual trigger
   push:
     branches:
       - main
     paths:
-      - 'function.go'
+      - '**/*.go'
       - 'go.mod'
       - 'go.sum'
       - '.gcloudignore'
@@ -14,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - 'function.go'
+      - '**/*.go'
       - 'go.mod'
       - 'go.sum'
 

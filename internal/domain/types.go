@@ -18,8 +18,8 @@ type AnalyticsRecord struct {
 
 // WebhookPayload represents the incoming webhook payload from AWS Lambda
 type WebhookPayload struct {
-	EventType string `json:"eventType"`
-	Timestamp int64  `json:"timestamp"`
+	EventType string          `json:"eventType"`
+	Timestamp int64           `json:"timestamp"`
 	Data      AnalyticsRecord `json:"data"`
 }
 
