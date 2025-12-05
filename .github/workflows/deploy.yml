@@ -105,7 +105,7 @@ jobs:
             --max-instances=10 \
             --min-instances=0 \
             --set-env-vars=ENVIRONMENT=production \
-            --set-secrets=WEBHOOK_SECRET=webhook-secret:latest \
+            --set-secrets=WEBHOOK_SECRET=cv-analytics-webhook-secret:latest \
             --service-account=${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
       - name: Get function URL
