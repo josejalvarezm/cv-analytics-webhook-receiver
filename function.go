@@ -194,11 +194,29 @@ func (r *FirestoreRepository) Write(ctx context.Context, record AnalyticsRecord)
 		"receivedAt":    time.Now().Unix(),
 	}
 
-	if _, err := docRef.Set(ctx, data); err != nil {
-		return fmt.Errorf("failed to write analytics to Firestore: %w", err)
+	// Retry logic for transient Firestore errors (P3: Firestore error handling)
+	maxRetries := 3
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if _, err := docRef.Set(ctx, data); err != nil {
+			lastErr = err
+			log.Printf("[WARN] Firestore write attempt %d/%d failed for %s: %v", attempt, maxRetries, record.RequestID, err)
+
+			if attempt < maxRetries {
+				// Exponential backoff: 100ms, 200ms, 400ms
+				time.Sleep(time.Duration(100*attempt) * time.Millisecond)
+				continue
+			}
+		} else {
+			// Success
+			if attempt > 1 {
+				log.Printf("[INFO] Firestore write succeeded on attempt %d for %s", attempt, record.RequestID)
+			}
+			return nil
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed to write analytics to Firestore after %d attempts: %w", maxRetries, lastErr)
 }
 
 // ===== HANDLER LAYER =====
